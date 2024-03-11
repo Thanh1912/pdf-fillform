@@ -99,9 +99,18 @@ func (r *PDFFormFiller) extractFormFields() error {
 		if !ok {
 			continue
 		}
-		name, err := types.HexLiteralToString(dict["T"].(types.HexLiteral))
-		if err != nil {
-			return errors.Wrap(err, "Decode T attribute of form field failed")
+		var name string
+		var err error
+		dictT := dict["T"]
+		if dictTHexLiteral, ok := dictT.(types.HexLiteral); ok {
+			name, err = types.HexLiteralToString(dictTHexLiteral)
+			if err != nil {
+				return errors.Wrap(err, "Decode T attribute of form field failed")
+			}
+		} else if dictTStringLiteral, ok := dictT.(types.StringLiteral); ok {
+			name = string(dictTStringLiteral)
+		} else {
+			panic("dict os not HexLiteral and not StringLiteral")
 		}
 
 		bb, err := r.ctx.RectForArray(dict.ArrayEntry("Rect"))
@@ -230,7 +239,6 @@ func (r *PDFFormFiller) AddImage(page int, image []byte, x, y, w, h int, scale f
 	}
 
 	descriptionString := fmt.Sprintf("pos:bl, rot: 0, sc: %.4f abs, off: %d %d", scale, x, y)
-	fmt.Printf("descriptionString %s\n", descriptionString)
 	wm, err := api.ImageWatermarkForReader(bytes.NewReader(image), descriptionString, true, false, types.POINTS)
 	if err != nil {
 		return errors.Wrap(err, "Build ImageWatermark failed")
